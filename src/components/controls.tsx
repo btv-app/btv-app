@@ -57,7 +57,7 @@ export function Chips<T extends string>({
             accessibilityState={{ selected }}
             style={[
               styles.chip,
-              { borderColor: theme.border, backgroundColor: selected ? theme.text : theme.card },
+              { borderColor: selected ? theme.text : theme.border, backgroundColor: selected ? theme.text : theme.card },
             ]}>
             <AppText type="small" style={{ color: selected ? theme.background : theme.text }}>
               {option}
@@ -66,6 +66,22 @@ export function Chips<T extends string>({
         );
       })}
     </ScrollView>
+  );
+}
+
+/** A single on/off chip, for multi-select rows and quick filters. */
+export function ToggleChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      style={[styles.chip, { borderColor: selected ? theme.text : theme.border, backgroundColor: selected ? theme.text : theme.card }]}>
+      <AppText type="small" style={{ color: selected ? theme.background : theme.text }}>
+        {label}
+      </AppText>
+    </Pressable>
   );
 }
 

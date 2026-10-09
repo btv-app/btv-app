@@ -13,8 +13,9 @@ export const CATEGORIES = [
   'Family',
   'Food',
   'Festival',
-  'Sports',
   'Community',
+  'Support a Cause',
+  'Community Resources',
   'Fitness',
   'Shopping',
 ] as const;
@@ -34,6 +35,7 @@ export type BtvEvent = {
   time: string;
   category: Category;
   description: string;
+  isFree: boolean;
   latitude: number;
   longitude: number;
   status: EventStatus;

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, Switch, TextInput, View, type TextInputProps } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button, Chips } from '@/components/controls';
@@ -18,6 +18,7 @@ export default function SubmitScreen() {
   const [form, setForm] = useState(EMPTY);
   const [town, setTown] = useState<Town>('Ashland City');
   const [category, setCategory] = useState<Category>('Music');
+  const [isFree, setIsFree] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const isOwner = role === 'owner';
@@ -61,8 +62,10 @@ export default function SubmitScreen() {
       description: form.description.trim(),
       town,
       category,
+      isFree,
     });
     setForm(EMPTY);
+    setIsFree(false);
     setError('');
     setSent(true);
   };
@@ -83,10 +86,24 @@ export default function SubmitScreen() {
       <AppText type="label" style={styles.label}>Category</AppText>
       <Chips options={CATEGORIES} value={category} onChange={setCategory} />
       <Field label="Venue or address" value={form.venue} onChangeText={set('venue')} placeholder="City Park amphitheater" />
+      <FreeSwitch value={isFree} onChange={setIsFree} />
       <Field label="Details" value={form.description} onChangeText={set('description')} multiline placeholder="What should people know?" />
       {!!error && <AppText style={{ color: '#B23B3B' }}>{error}</AppText>}
       <Button title={isOwner ? 'Publish event' : 'Send for review'} onPress={submit} />
     </Screen>
+  );
+}
+
+function FreeSwitch({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.switchRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={{ flex: 1 }}>
+        <AppText type="strong">Free to attend</AppText>
+        <AppText type="small">No ticket, cover charge or entry fee</AppText>
+      </View>
+      <Switch value={value} onValueChange={onChange} trackColor={{ true: theme.primary, false: theme.border }} />
+    </View>
   );
 }
 
@@ -111,6 +128,7 @@ function Field({ label, style, multiline, ...rest }: TextInputProps & { label: s
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginTop: 6, borderRadius: Radius.medium, borderWidth: 1 },
   label: { marginTop: 6 },
   input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: 11, paddingVertical: 10, fontFamily: Fonts.body, fontSize: 15 },
 });

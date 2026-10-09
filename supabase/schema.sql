@@ -19,8 +19,12 @@ create table events (
   venue text not null,
   event_date date not null,
   time_text text not null,          -- as the organizer wrote it, e.g. "7-10 PM"
-  category text not null,
+  category text not null check (category in (
+    'Music', 'Family', 'Food', 'Festival', 'Community',
+    'Support a Cause', 'Community Resources', 'Fitness', 'Shopping'
+  )),
   description text not null default '',
+  is_free boolean not null default false,
   latitude double precision,
   longitude double precision,
   flyer_path text,                  -- object path in the "flyers" storage bucket

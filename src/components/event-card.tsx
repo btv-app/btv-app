@@ -25,7 +25,14 @@ export function EventCard({ event }: { event: BtvEvent }) {
       accessibilityRole="button">
       <DateBadge date={event.date} />
       <View style={styles.body}>
-        <CategoryTag category={event.category} />
+        <View style={styles.tags}>
+          <CategoryTag category={event.category} />
+          {event.isFree && (
+            <AppText type="label" style={[styles.free, { color: theme.primary }]}>
+              Free
+            </AppText>
+          )}
+        </View>
         <AppText type="cardTitle" numberOfLines={2}>
           {event.title}
         </AppText>
@@ -55,4 +62,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   body: { flex: 1, gap: 3 },
+  tags: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  free: { fontSize: 10 },
 });

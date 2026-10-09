@@ -1,31 +1,99 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Fragment, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { AdSlot } from '@/components/ad-slot';
 import { AppText } from '@/components/app-text';
-import { Chips, Segmented } from '@/components/controls';
+import { Button, Segmented, ToggleChip } from '@/components/controls';
 import { EventCalendar } from '@/components/event-calendar';
 import { EventCard } from '@/components/event-card';
 import { EventMap } from '@/components/event-map';
+import { FilterSheet } from '@/components/filter-sheet';
 import { Screen } from '@/components/screen';
+import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { groupLabel } from '@/data/dates';
+import { activeFilterCount, applyFilters, DEFAULT_FILTERS, type EventFilters } from '@/data/filters';
 import { useStore } from '@/data/store';
-import { TOWNS, type BtvEvent } from '@/data/types';
+import type { BtvEvent, Category } from '@/data/types';
+import { useTheme } from '@/hooks/use-theme';
 
-type View = 'list' | 'map' | 'calendar';
-const TOWN_FILTERS = ['All', ...TOWNS] as const;
+type ViewMode = 'list' | 'map' | 'calendar';
 
 /** A sponsored card appears after this many events in the list. */
 const AD_EVERY = 3;
 
 export default function EventsScreen() {
+  const theme = useTheme();
   const { approved } = useStore();
-  const [view, setView] = useState<View>('list');
-  const [town, setTown] = useState<(typeof TOWN_FILTERS)[number]>('All');
+  const [view, setView] = useState<ViewMode>('list');
+  const [filters, setFilters] = useState<EventFilters>(DEFAULT_FILTERS);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  const events = approved.filter((e) => town === 'All' || e.town === town);
+  const events = applyFilters(approved, filters);
+  const activeCount = activeFilterCount(filters);
+
+  const set = (patch: Partial<EventFilters>) => setFilters((f) => ({ ...f, ...patch }));
+  const toggleCategory = (category: Category) =>
+    setFilters((f) => ({
+      ...f,
+      categories: f.categories.includes(category)
+        ? f.categories.filter((c) => c !== category)
+        : [...f.categories, category],
+    }));
+
+  // Shortcuts to the most-used filters; each mirrors a setting in the full filter sheet.
+  const quickFilters = [
+    { label: 'Today', selected: filters.when === 'today', onPress: () => set({ when: filters.when === 'today' ? 'any' : 'today', date: null }) },
+    { label: 'This weekend', selected: filters.when === 'weekend', onPress: () => set({ when: filters.when === 'weekend' ? 'any' : 'weekend', date: null }) },
+    { label: 'Live music', selected: filters.categories.includes('Music'), onPress: () => toggleCategory('Music') },
+    { label: 'Free', selected: filters.freeOnly, onPress: () => set({ freeOnly: !filters.freeOnly }) },
+    { label: 'Support a cause', selected: filters.categories.includes('Support a Cause'), onPress: () => toggleCategory('Support a Cause') },
+    { label: 'Community resources', selected: filters.categories.includes('Community Resources'), onPress: () => toggleCategory('Community Resources') },
+  ];
 
   return (
     <Screen>
+      <View style={styles.searchRow}>
+        <View style={[styles.search, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Ionicons name="search" size={17} color={theme.textSecondary} />
+          <TextInput
+            value={filters.search}
+            onChangeText={(search) => set({ search })}
+            placeholder="Search events or venues"
+            placeholderTextColor={theme.textSecondary}
+            returnKeyType="search"
+            style={[styles.searchInput, { color: theme.text }]}
+            accessibilityLabel="Search events"
+          />
+          {!!filters.search && (
+            <Pressable onPress={() => set({ search: '' })} hitSlop={10} accessibilityLabel="Clear search">
+              <Ionicons name="close-circle" size={17} color={theme.textSecondary} />
+            </Pressable>
+          )}
+        </View>
+        <Pressable
+          onPress={() => setSheetOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={activeCount ? `Filters, ${activeCount} on` : 'Filters'}
+          style={[
+            styles.filterButton,
+            { borderColor: activeCount ? theme.primary : theme.border, backgroundColor: activeCount ? theme.backgroundElement : theme.card },
+          ]}>
+          <Ionicons name="options-outline" size={18} color={activeCount ? theme.primary : theme.text} />
+          {activeCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+              <AppText style={[styles.badgeText, { color: theme.onPrimary }]}>{activeCount}</AppText>
+            </View>
+          )}
+        </Pressable>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quick}>
+        {quickFilters.map((q) => (
+          <ToggleChip key={q.label} {...q} />
+        ))}
+      </ScrollView>
+
       <Segmented
         options={[
           { value: 'list', label: 'List' },
@@ -35,17 +103,39 @@ export default function EventsScreen() {
         value={view}
         onChange={setView}
       />
-      <Chips options={TOWN_FILTERS} value={town} onChange={setTown} />
-      {view === 'list' && <EventList events={events} />}
-      {view === 'map' && <EventMap events={events} />}
-      {view === 'calendar' && <EventCalendar events={events} />}
+
+      {events.length === 0 && (activeCount > 0 || filters.search) ? (
+        <View style={styles.empty}>
+          <AppText type="script">nothing matches</AppText>
+          <AppText type="small" style={{ textAlign: 'center' }}>
+            Try fewer filters, or clear them to see everything coming up.
+          </AppText>
+          <View style={{ alignSelf: 'stretch' }}>
+            <Button title="Clear filters" variant="secondary" onPress={() => setFilters(DEFAULT_FILTERS)} />
+          </View>
+        </View>
+      ) : (
+        <>
+          {view === 'list' && <EventList events={events} />}
+          {view === 'map' && <EventMap events={events} />}
+          {view === 'calendar' && <EventCalendar events={events} />}
+        </>
+      )}
+
+      <FilterSheet
+        visible={sheetOpen}
+        filters={filters}
+        onChange={setFilters}
+        onClose={() => setSheetOpen(false)}
+        resultCount={events.length}
+      />
     </Screen>
   );
 }
 
 function EventList({ events }: { events: BtvEvent[] }) {
   if (!events.length) {
-    return <AppText type="small">Nothing listed here yet. Know of something? Tap Submit to add it.</AppText>;
+    return <AppText type="small">Nothing listed yet. Know of something? Tap Submit to add it.</AppText>;
   }
   let lastGroup = '';
   return events.map((event, i) => {
@@ -61,3 +151,38 @@ function EventList({ events }: { events: BtvEvent[] }) {
     );
   });
 }
+
+const styles = StyleSheet.create({
+  searchRow: { flexDirection: 'row', gap: Spacing.two },
+  search: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: Radius.medium,
+    paddingHorizontal: 12,
+  },
+  searchInput: { flex: 1, paddingVertical: 10, fontFamily: Fonts.body, fontSize: 15 },
+  filterButton: {
+    width: 46,
+    borderWidth: 1,
+    borderRadius: Radius.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: { fontFamily: Fonts.bodyBold, fontSize: 10.5, lineHeight: 13 },
+  quick: { gap: 6, paddingBottom: 2 },
+  empty: { alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.five },
+});

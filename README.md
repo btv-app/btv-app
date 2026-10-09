@@ -4,10 +4,11 @@ The mobile app for Between the Villes, local events in Cheatham County, TN. Buil
 
 ## What's here
 
-- **Events** in three views: list (grouped "today", "this weekend", "next week"), map, and month calendar, with a town filter.
+- **Events** in three views: list (grouped "today", "this weekend", "next week"), map, and month calendar.
+- **Search and filters**: search by name or venue; filter by when (today, this weekend, next 7 days, or a picked date), category, town, and free events. Quick chips cover Today, This weekend, Live music, Free, Support a cause and Community resources.
 - **Event pages** with save, plus calendar, directions and share buttons (those three are not wired up yet).
 - **Saved** events, kept on the device for now.
-- **Submit an event**: residents' events go to a review queue; the owner's publish right away.
+- **Submit an event** (including whether it's free): residents' events go to a review queue; the owner's publish right away.
 - **Owner review**: approve or decline submissions. The tab only appears for the owner.
 - **Ad slots**: a sponsored card every third event in the list, and a banner on event pages.
 
