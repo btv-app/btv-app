@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/controls';
+import { Field } from '@/components/field';
 import { Screen } from '@/components/screen';
 import { Radius } from '@/constants/theme';
 import { useStore } from '@/data/store';
@@ -11,7 +13,7 @@ const STATUS_LABEL = { pending: 'In review', approved: 'Approved', declined: 'De
 
 export default function AccountScreen() {
   const theme = useTheme();
-  const { role, displayName, signIn, signOut, mySubmissions } = useStore();
+  const { role, displayName, email, signOut, mySubmissions } = useStore();
 
   if (role === 'guest') {
     return (
@@ -20,15 +22,10 @@ export default function AccountScreen() {
           <AppText type="script" style={{ fontSize: 26 }}>this weekend in</AppText>
           <AppText type="title" style={{ fontSize: 34, lineHeight: 36, textAlign: 'center' }}>Cheatham County</AppText>
           <AppText type="small" style={{ textAlign: 'center' }}>
-            Sign in to save events across devices, get reminders and submit your own.
+            Sign in to save events across devices and submit your own.
           </AppText>
         </View>
-        {/* Placeholder sign-in until Supabase Auth (Apple, Google, email) is connected. */}
-        <Button title="Continue as a resident" onPress={() => signIn('resident')} />
-        <Button title="Sign in as the BTV owner" variant="accent" onPress={() => signIn('owner')} />
-        <AppText type="small" style={{ textAlign: 'center' }}>
-          Demo sign-in. Apple, Google and email sign-in arrive with the backend.
-        </AppText>
+        <SignIn />
       </Screen>
     );
   }
@@ -36,7 +33,10 @@ export default function AccountScreen() {
   return (
     <Screen>
       <AppText type="title">{displayName}</AppText>
-      <AppText type="small">{role === 'owner' ? 'Owner · can approve events' : 'Resident'}</AppText>
+      <AppText type="small">
+        {role === 'owner' ? 'Owner · can approve events' : 'Resident'}
+        {email ? ` · ${email}` : ''}
+      </AppText>
       <AppText type="script">my submissions</AppText>
       <View style={[styles.panel, { backgroundColor: theme.card, borderColor: theme.border }]}>
         {mySubmissions.length ? (
@@ -52,6 +52,95 @@ export default function AccountScreen() {
       </View>
       <Button title="Sign out" variant="secondary" onPress={signOut} />
     </Screen>
+  );
+}
+
+/** Email sign-in with a one-time code; no passwords to remember. */
+function SignIn() {
+  const { backend, demoSignIn, sendCode, verifyCode } = useStore();
+  const [address, setAddress] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  if (backend === 'demo') {
+    return (
+      <>
+        <Button title="Continue as a resident" onPress={() => demoSignIn('resident')} />
+        <Button title="Sign in as the BTV owner" variant="accent" onPress={() => demoSignIn('owner')} />
+        <AppText type="small" style={{ textAlign: 'center' }}>
+          Demo sign-in. Email sign-in turns on once the app is connected to its database.
+        </AppText>
+      </>
+    );
+  }
+
+  const run = async (action: () => Promise<string | null>, onSuccess?: () => void) => {
+    setBusy(true);
+    setError('');
+    const failure = await action();
+    setBusy(false);
+    if (failure) setError(failure);
+    else onSuccess?.();
+  };
+
+  const send = () => {
+    if (!/^\S+@\S+\.\S+$/.test(address.trim())) return setError('Enter your email address.');
+    run(() => sendCode(address), () => setCodeSent(true));
+  };
+
+  if (!codeSent) {
+    return (
+      <>
+        <Field
+          label="Email"
+          value={address}
+          onChangeText={setAddress}
+          placeholder="you@example.com"
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          returnKeyType="send"
+          onSubmitEditing={send}
+        />
+        {!!error && <AppText themeColor="danger">{error}</AppText>}
+        <Button title={busy ? 'Sending…' : 'Email me a sign-in code'} disabled={busy} onPress={send} />
+      </>
+    );
+  }
+
+  const verify = () => {
+    if (!/^\d{6,10}$/.test(code.trim())) return setError('Enter the code from the email.');
+    run(() => verifyCode(address, code));
+  };
+
+  return (
+    <>
+      <AppText>We sent a code to {address.trim()}.</AppText>
+      <Field
+        label="Code"
+        value={code}
+        onChangeText={setCode}
+        placeholder="123456"
+        keyboardType="number-pad"
+        autoComplete="one-time-code"
+        textContentType="oneTimeCode"
+        returnKeyType="done"
+        onSubmitEditing={verify}
+      />
+      {!!error && <AppText themeColor="danger">{error}</AppText>}
+      <Button title={busy ? 'Checking…' : 'Sign in'} disabled={busy} onPress={verify} />
+      <Button
+        title="Use a different email"
+        variant="secondary"
+        onPress={() => {
+          setCodeSent(false);
+          setCode('');
+          setError('');
+        }}
+      />
+    </>
   );
 }
 

@@ -12,7 +12,7 @@ The mobile app for Between the Villes, local events in Cheatham County, TN. Buil
 - **Owner review**: approve or decline submissions. The tab only appears for the owner.
 - **Ad slots**: a sponsored card every third event in the list, and a banner on event pages.
 
-Data is sample events and sign-in is a demo switch. Both are replaced by Supabase next; `src/data/store.tsx` is the one place that changes. The planned database, with row-level security so only the owner can approve, is in `supabase/schema.sql`.
+Events, saved events, submissions and sign-in (a one-time code by email) live in Supabase. The connection settings are in `.env`; while the key there is empty, the app runs on sample events with a demo sign-in. The database, with row-level security so only the owner can approve, is in `supabase/schema.sql`, and `supabase/SETUP.md` walks through setting it up.
 
 ## Brand
 
@@ -29,7 +29,7 @@ Scan the QR code with Expo Go on your phone, or press `w` for the web version. T
 
 ## Next steps
 
-1. Create the Supabase project, run `supabase/schema.sql`, and connect sign-in (Apple, Google, email).
+1. Add Apple and Google sign-in alongside the email code.
 2. Wire up add-to-calendar, directions and share.
 3. Push reminders for saved events and approval notices.
 4. Google AdMob (needs a development build, not Expo Go).

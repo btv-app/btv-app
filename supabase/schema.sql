@@ -1,5 +1,5 @@
 -- Between the Villes: database schema for Supabase (Postgres).
--- Run in the Supabase SQL editor once the project exists. Not applied anywhere yet.
+-- Paste into the Supabase SQL editor and run once. See supabase/SETUP.md.
 
 create type event_status as enum ('pending', 'approved', 'declined');
 create type user_role as enum ('resident', 'owner');
@@ -59,6 +59,17 @@ create function is_owner() returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from profiles where id = auth.uid() and role = 'owner');
 $$;
+
+-- Create a profile the first time someone signs in, named after their email.
+create function handle_new_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into profiles (id, display_name) values (new.id, split_part(new.email, '@', 1));
+  return new;
+end;
+$$;
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function handle_new_user();
 
 alter table profiles enable row level security;
 alter table events enable row level security;

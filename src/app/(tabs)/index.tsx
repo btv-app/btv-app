@@ -24,7 +24,7 @@ const AD_EVERY = 3;
 
 export default function EventsScreen() {
   const theme = useTheme();
-  const { approved } = useStore();
+  const { approved, loading, loadError, refresh } = useStore();
   const [view, setView] = useState<ViewMode>('list');
   const [filters, setFilters] = useState<EventFilters>(DEFAULT_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -104,7 +104,16 @@ export default function EventsScreen() {
         onChange={setView}
       />
 
-      {events.length === 0 && (activeCount > 0 || filters.search) ? (
+      {loading ? (
+        <AppText type="small" style={{ textAlign: 'center' }}>Loading events…</AppText>
+      ) : loadError ? (
+        <View style={styles.empty}>
+          <AppText themeColor="danger" style={{ textAlign: 'center' }}>{loadError}</AppText>
+          <View style={{ alignSelf: 'stretch' }}>
+            <Button title="Try again" variant="secondary" onPress={refresh} />
+          </View>
+        </View>
+      ) : events.length === 0 && (activeCount > 0 || filters.search) ? (
         <View style={styles.empty}>
           <AppText type="script">nothing matches</AppText>
           <AppText type="small" style={{ textAlign: 'center' }}>
