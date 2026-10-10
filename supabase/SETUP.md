@@ -7,6 +7,8 @@ The app talks to the Supabase project `uenshjtbgjztcgtgywlz`. These steps are do
 1. Open **SQL Editor** and click **New query**.
 2. Paste all of [`schema.sql`](schema.sql) and click **Run**. It should say "Success. No rows returned".
 
+The script is safe to run again: it only adds what is missing and never deletes tables or data. If it stops with "Type ... is missing ...", run [`fix-enum-labels.sql`](fix-enum-labels.sql) on its own in a new query, then run `schema.sql` again.
+
 ## 2. Turn on sign-in codes
 
 The app signs people in with a 6-digit code sent by email, so nobody needs a password.
