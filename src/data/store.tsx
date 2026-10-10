@@ -176,6 +176,11 @@ function detailColumns(input: NewEvent) {
   };
 }
 
+/** A friendly message plus the database's own reason, so a failure can be traced. */
+function withDetail(message: string, error: { message: string }) {
+  return `${message}\n\nDetails: ${error.message}`;
+}
+
 /** Demo mode: an event's details as the app shows them, without a database. */
 function demoEvent(input: NewEvent, currentFlyerUrl?: string) {
   // Copy only the detail fields: callers may pass a whole preview event, whose id and status
@@ -381,7 +386,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .insert({ ...detailColumns(input), flyer_path: flyer.path, status, submitted_by: userId });
         if (error) {
           if (flyer.uploaded) supabase.storage.from(FLYER_BUCKET).remove([flyer.uploaded]);
-          return "Couldn't send your event. Check your connection and try again.";
+          return withDetail("Couldn't send your event. Check your connection and try again.", error);
         }
         await loadEvents();
         return null;
@@ -402,7 +407,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .eq('id', id);
         if (error) {
           if (flyer.uploaded) supabase.storage.from(FLYER_BUCKET).remove([flyer.uploaded]);
-          return "Couldn't save your changes. Check your connection and try again.";
+          return withDetail("Couldn't save your changes. Check your connection and try again.", error);
         }
         // The old flyer is only removed once the event no longer points to it.
         if (current.flyerPath && current.flyerPath !== flyer.path) {
@@ -415,7 +420,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setCancelled: async (id, cancelled) => {
         if (supabase) {
           const { error } = await supabase.from('events').update({ cancelled }).eq('id', id);
-          if (error) return "Couldn't save that. Try again.";
+          if (error) return withDetail("Couldn't save that. Try again.", error);
           await loadEvents();
         } else {
           setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, cancelled } : e)));
@@ -427,7 +432,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const flyerPath = events.find((e) => e.id === id)?.flyerPath;
         if (supabase) {
           const { error } = await supabase.from('events').delete().eq('id', id);
-          if (error) return "Couldn't delete that event. Try again.";
+          if (error) return withDetail("Couldn't delete that event. Try again.", error);
           if (flyerPath) supabase.storage.from(FLYER_BUCKET).remove([flyerPath]);
           await loadEvents();
         } else {
@@ -445,7 +450,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .from('events')
           .update({ status: decision, reviewed_by: userId, reviewed_at: new Date().toISOString() })
           .eq('id', id);
-        if (error) return "Couldn't save that. Try again.";
+        if (error) return withDetail("Couldn't save that. Try again.", error);
         await loadEvents();
         return null;
       },
@@ -455,7 +460,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if ('error' in checked) return checked.error;
         if (supabase) {
           const { error } = await supabase.from('categories').insert({ name: checked.name, sort_order: categories.length });
-          if (error) return "Couldn't add that category. Try again.";
+          if (error) return withDetail("Couldn't add that category. Try again.", error);
         }
         setCategories((prev) => [...prev, checked.name]);
         return null;
@@ -465,7 +470,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (categories.length <= 1) return 'Keep at least one category.';
         if (supabase) {
           const { error } = await supabase.from('categories').delete().eq('name', name);
-          if (error) return "Couldn't remove that category. Try again.";
+          if (error) return withDetail("Couldn't remove that category. Try again.", error);
         }
         setCategories((prev) => prev.filter((c) => c !== name));
         return null;
@@ -478,7 +483,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const town: TownInfo = { name: checked.name, ...((await geocodeTown(checked.name)) ?? COUNTY_CENTER) };
         if (supabase) {
           const { error } = await supabase.from('towns').insert({ ...town, sort_order: towns.length });
-          if (error) return "Couldn't add that town. Try again.";
+          if (error) return withDetail("Couldn't add that town. Try again.", error);
         }
         setTowns((prev) => [...prev, town]);
         return null;
@@ -488,7 +493,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (towns.length <= 1) return 'Keep at least one town.';
         if (supabase) {
           const { error } = await supabase.from('towns').delete().eq('name', name);
-          if (error) return "Couldn't remove that town. Try again.";
+          if (error) return withDetail("Couldn't remove that town. Try again.", error);
         }
         setTowns((prev) => prev.filter((t) => t.name !== name));
         return null;
