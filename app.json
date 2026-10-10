@@ -8,9 +8,11 @@
     "scheme": "btv",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "betweenthevilles.app",
+      "icon": "./assets/images/icon.png"
     },
     "android": {
+      "package": "betweenthevilles.app",
       "adaptiveIcon": {
         "backgroundColor": "#517C9F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -30,7 +32,7 @@
         {
           "backgroundColor": "#517C9F",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 240
         }
       ]
     ],
