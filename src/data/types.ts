@@ -39,7 +39,9 @@ export type BtvEvent = {
   latitude: number;
   longitude: number;
   status: EventStatus;
+  /** Display name of whoever submitted it, for the owner's review queue. */
   submittedBy?: string;
+  submittedById?: string;
 };
 
 export type Role = 'guest' | 'resident' | 'owner';

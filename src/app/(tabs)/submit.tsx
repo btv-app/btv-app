@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Switch, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, Switch, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button, Chips } from '@/components/controls';
+import { Field } from '@/components/field';
 import { Screen } from '@/components/screen';
-import { Fonts, Radius } from '@/constants/theme';
+import { Radius } from '@/constants/theme';
 import { parseDate, toIsoDate } from '@/data/dates';
 import { useStore } from '@/data/store';
 import { CATEGORIES, TOWNS, type Category, type Town } from '@/data/types';
@@ -21,6 +22,7 @@ export default function SubmitScreen() {
   const [isFree, setIsFree] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const isOwner = role === 'owner';
 
   if (role === 'guest') {
@@ -40,7 +42,7 @@ export default function SubmitScreen() {
         <AppText>
           {isOwner
             ? "It's live in the list, map and calendar now."
-            : "The BTV team reviews submissions daily. We'll let you know when it's approved."}
+            : 'The BTV team reviews every submission. You can check its status under Account.'}
         </AppText>
         <Button title="Submit another" variant="secondary" onPress={() => setSent(false)} />
       </Screen>
@@ -49,12 +51,13 @@ export default function SubmitScreen() {
 
   const set = (key: keyof typeof EMPTY) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
-  const submit = () => {
+  const submit = async () => {
     if (!form.title.trim()) return setError('Add a name for the event.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date) || toIsoDate(parseDate(form.date)) !== form.date) {
       return setError('Enter the date as YYYY-MM-DD, for example 2026-10-25.');
     }
-    submitEvent({
+    setSending(true);
+    const failure = await submitEvent({
       title: form.title.trim(),
       date: form.date,
       time: form.time.trim() || 'Time TBA',
@@ -64,6 +67,8 @@ export default function SubmitScreen() {
       category,
       isFree,
     });
+    setSending(false);
+    if (failure) return setError(failure);
     setForm(EMPTY);
     setIsFree(false);
     setError('');
@@ -88,8 +93,12 @@ export default function SubmitScreen() {
       <Field label="Venue or address" value={form.venue} onChangeText={set('venue')} placeholder="City Park amphitheater" />
       <FreeSwitch value={isFree} onChange={setIsFree} />
       <Field label="Details" value={form.description} onChangeText={set('description')} multiline placeholder="What should people know?" />
-      {!!error && <AppText style={{ color: '#B23B3B' }}>{error}</AppText>}
-      <Button title={isOwner ? 'Publish event' : 'Send for review'} onPress={submit} />
+      {!!error && <AppText themeColor="danger">{error}</AppText>}
+      <Button
+        title={sending ? 'Sending…' : isOwner ? 'Publish event' : 'Send for review'}
+        onPress={submit}
+        disabled={sending}
+      />
     </Screen>
   );
 }
@@ -107,28 +116,8 @@ function FreeSwitch({ value, onChange }: { value: boolean; onChange: (value: boo
   );
 }
 
-function Field({ label, style, multiline, ...rest }: TextInputProps & { label: string }) {
-  const theme = useTheme();
-  return (
-    <View style={[{ gap: 5 }, style]}>
-      <AppText type="label" style={styles.label}>{label}</AppText>
-      <TextInput
-        placeholderTextColor={theme.textSecondary}
-        multiline={multiline}
-        style={[
-          styles.input,
-          { backgroundColor: theme.card, borderColor: theme.border, color: theme.text },
-          multiline && { minHeight: 80, textAlignVertical: 'top' },
-        ]}
-        {...rest}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginTop: 6, borderRadius: Radius.medium, borderWidth: 1 },
   label: { marginTop: 6 },
-  input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: 11, paddingVertical: 10, fontFamily: Fonts.body, fontSize: 15 },
 });

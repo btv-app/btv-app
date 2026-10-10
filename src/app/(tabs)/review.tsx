@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -13,6 +14,8 @@ import { useTheme } from '@/hooks/use-theme';
 export default function ReviewScreen() {
   const theme = useTheme();
   const { role, pending, review } = useStore();
+  const [error, setError] = useState('');
+  const decide = async (id: string, decision: 'approved' | 'declined') => setError((await review(id, decision)) ?? '');
 
   if (role !== 'owner') {
     return (
@@ -26,6 +29,7 @@ export default function ReviewScreen() {
     <Screen>
       <AppText type="title">Owner review</AppText>
       <AppText type="small">{pending.length ? `${pending.length} waiting for review` : 'All caught up.'}</AppText>
+      {!!error && <AppText themeColor="danger">{error}</AppText>}
       {pending.map((e) => (
         <View key={e.id} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, borderLeftColor: theme.accent }]}>
           <CategoryTag category={e.category} />
@@ -37,10 +41,10 @@ export default function ReviewScreen() {
           {!!e.description && <AppText>{e.description}</AppText>}
           <View style={styles.actions}>
             <View style={{ flex: 1 }}>
-              <Button title="Approve" onPress={() => review(e.id, 'approved')} />
+              <Button title="Approve" onPress={() => decide(e.id, 'approved')} />
             </View>
             <View style={{ flex: 1 }}>
-              <Button title="Decline" variant="secondary" onPress={() => review(e.id, 'declined')} />
+              <Button title="Decline" variant="secondary" onPress={() => decide(e.id, 'declined')} />
             </View>
           </View>
         </View>
