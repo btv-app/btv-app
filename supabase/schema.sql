@@ -190,7 +190,9 @@ begin
   if tg_op = 'INSERT' or new.categories is distinct from old.categories then
     select string_agg(c, ', ') into unknown
     from unnest(new.categories) as c
-    where not exists (select 1 from categories where name = c);
+    where not exists (select 1 from categories where name = c)
+      -- An event may keep a category the owner has since removed from the list.
+      and (tg_op = 'INSERT' or not c = any(old.categories));
     if unknown is not null then
       raise exception 'Not a current category: %', unknown;
     end if;
