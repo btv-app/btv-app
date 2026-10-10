@@ -110,13 +110,66 @@ begin
   end if;
 end $$;
 
--- Event categories. Replacing the check keeps it in step with the app; if an existing event
--- uses a category not listed here, this fails and nothing is changed.
+-- Event fields added after the first version. "if not exists" skips any that are already there.
+alter table events add column if not exists address text;            -- street address; venue holds the name
+alter table events add column if not exists start_time time;
+alter table events add column if not exists end_time time;
+alter table events add column if not exists price_text text;         -- e.g. "$10, kids free"
+alter table events add column if not exists link_url text;           -- tickets, Facebook event or website
+alter table events add column if not exists categories text[];       -- one to three; the first is the main one
+
+-- Events from before multiple categories keep their one category as the list.
+update events set categories = array[category] where categories is null or cardinality(categories) = 0;
+
+-- Categories the owner manages in the app. The starting list goes in only when the table is
+-- first created, so a category the owner removed doesn't come back when this script is rerun.
+do $$
+begin
+  if to_regclass('public.categories') is null then
+    create table public.categories (
+      name text primary key check (char_length(name) between 1 and 30),
+      sort_order int not null default 0,
+      created_at timestamptz not null default now()
+    );
+    insert into public.categories (name, sort_order)
+    select name, ord - 1
+    from unnest(array[
+      'Music', 'Family', 'Food', 'Festival', 'Community',
+      'Support a Cause', 'Community Resources', 'Fitness', 'Shopping'
+    ]) with ordinality as t(name, ord);
+  end if;
+end $$;
+
+-- Categories used to be a fixed list checked here. The owner manages them now, so that check
+-- goes, and each event instead needs one to three categories.
 alter table events drop constraint if exists events_category_check;
-alter table events add constraint events_category_check check (category in (
-  'Music', 'Family', 'Food', 'Festival', 'Community',
-  'Support a Cause', 'Community Resources', 'Fitness', 'Shopping'
-));
+alter table events drop constraint if exists events_categories_count;
+alter table events add constraint events_categories_count
+  check (categories is not null and cardinality(categories) between 1 and 3);
+-- Links open in the browser, so only web addresses are allowed.
+alter table events drop constraint if exists events_link_url_check;
+alter table events add constraint events_link_url_check check (link_url is null or link_url ~* '^https?://');
+
+-- New or changed categories must be on the owner's list. Events keep a category the owner
+-- removes later, since this only runs when an event's categories change. It also keeps the
+-- older single "category" column set to the main category.
+create or replace function check_event_categories() returns trigger
+language plpgsql set search_path = public as $$
+declare
+  unknown text;
+begin
+  select string_agg(c, ', ') into unknown
+  from unnest(new.categories) as c
+  where not exists (select 1 from categories where name = c);
+  if unknown is not null then
+    raise exception 'Not a current category: %', unknown;
+  end if;
+  new.category := new.categories[1];
+  return new;
+end;
+$$;
+create or replace trigger events_check_categories before insert or update of categories on events
+  for each row execute function check_event_categories();
 
 create or replace function is_owner() returns boolean
 language sql stable security definer set search_path = public as $$
@@ -144,6 +197,7 @@ alter table profiles enable row level security;
 alter table events enable row level security;
 alter table saved_events enable row level security;
 alter table sponsors enable row level security;
+alter table categories enable row level security;
 
 -- Policies have no "if not exists", so each is dropped and recreated. Inside this
 -- transaction there is no moment when a table is left unprotected, and no data is touched.
@@ -172,6 +226,12 @@ create policy "owner deletes events" on events for delete using (is_owner());
 drop policy if exists "own saved events" on saved_events;
 create policy "own saved events" on saved_events for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- Categories: everyone reads them; only the owner adds or removes them.
+drop policy if exists "read categories" on categories;
+create policy "read categories" on categories for select using (true);
+drop policy if exists "owner manages categories" on categories;
+create policy "owner manages categories" on categories for all using (is_owner()) with check (is_owner());
 
 drop policy if exists "read active sponsors" on sponsors;
 create policy "read active sponsors" on sponsors for select

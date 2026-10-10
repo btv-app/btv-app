@@ -65,7 +65,7 @@ export function applyFilters(events: BtvEvent[], filters: EventFilters): BtvEven
   return events.filter(
     (e) =>
       matchesWhen(e, filters) &&
-      (filters.categories.length === 0 || filters.categories.includes(e.category)) &&
+      (filters.categories.length === 0 || e.categories.some((c) => filters.categories.includes(c))) &&
       (filters.town === 'All' || e.town === filters.town) &&
       (!filters.freeOnly || e.isFree) &&
       (!query || [e.title, e.venue, e.town].some((field) => field.toLowerCase().includes(query))),

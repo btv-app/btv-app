@@ -8,7 +8,11 @@ export const TOWNS = [
 
 export type Town = (typeof TOWNS)[number];
 
-export const CATEGORIES = [
+/**
+ * The categories a new project starts with. The owner can add and remove categories in the app,
+ * so screens read the live list from the store, not this constant.
+ */
+export const DEFAULT_CATEGORIES = [
   'Music',
   'Family',
   'Food',
@@ -20,7 +24,10 @@ export const CATEGORIES = [
   'Shopping',
 ] as const;
 
-export type Category = (typeof CATEGORIES)[number];
+export type Category = string;
+
+/** Most categories one event can have. */
+export const MAX_EVENT_CATEGORIES = 3;
 
 export type EventStatus = 'pending' | 'approved' | 'declined';
 
@@ -31,11 +38,20 @@ export type BtvEvent = {
   venue: string;
   /** Local date, YYYY-MM-DD */
   date: string;
-  /** Free text as the organizer wrote it, e.g. "7-10 PM" */
+  /** Display text, e.g. "7 – 10 PM" */
   time: string;
-  category: Category;
+  /** One to three, the first is the main one. */
+  categories: Category[];
   description: string;
   isFree: boolean;
+  /** As the organizer wrote it, e.g. "$10, kids free". Empty for free events. */
+  price?: string;
+  /** Tickets, Facebook event or website. */
+  link?: string;
+  /** Street address; the venue name is in `venue`. */
+  address?: string;
+  /** Public URL of the flyer image. */
+  flyerUrl?: string;
   latitude: number;
   longitude: number;
   status: EventStatus;

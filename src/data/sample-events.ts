@@ -12,6 +12,7 @@ type Seed = {
   inDays: number;
   time: string;
   category: Category;
+  also?: Category[];
   description: string;
   isFree?: boolean;
   status?: EventStatus;
@@ -20,7 +21,7 @@ type Seed = {
 
 const SEEDS: Seed[] = [
   { title: 'Live Music on the Patio', town: 'Ashland City', venue: 'Riverside grill patio', inDays: 0, time: '7–10 PM', category: 'Music', isFree: true, description: 'Local acoustic duo playing country and classic rock covers. No cover charge.' },
-  { title: 'Fall Fest on Main', town: 'Ashland City', venue: 'Downtown Main Street', inDays: 1, time: '10 AM – 4 PM', category: 'Festival', isFree: true, description: "Craft vendors, food trucks, a kids' zone and live music on the courthouse lawn. Free to attend." },
+  { title: 'Fall Fest on Main', town: 'Ashland City', venue: 'Downtown Main Street', inDays: 1, time: '10 AM – 4 PM', category: 'Festival', also: ['Family', 'Food'], isFree: true, description: "Craft vendors, food trucks, a kids' zone and live music on the courthouse lawn. Free to attend." },
   { title: 'Saturday Farmers Market', town: 'Kingston Springs', venue: 'City Park pavilion', inDays: 1, time: '8 AM – Noon', category: 'Food', isFree: true, description: 'Late-season produce, honey, baked goods and handmade soap from local growers.' },
   { title: 'Coffeehouse Songwriter Night', town: 'Pleasant View', venue: 'Coffee shop on Hwy 41A', inDays: 2, time: '6 PM ($5 cover)', category: 'Music', description: 'Three local songwriters trade songs in the round. $5 at the door.' },
   { title: 'Community Blood Drive', town: 'Ashland City', venue: 'First Baptist fellowship hall', inDays: 4, time: '11 AM – 5 PM', category: 'Support a Cause', isFree: true, description: 'Walk-ins welcome. Bring a photo ID. Every donor gets a T-shirt.' },
@@ -49,7 +50,7 @@ export function sampleEvents(): BtvEvent[] {
       venue: seed.venue,
       date: toIsoDate(addDays(today, seed.inDays)),
       time: seed.time,
-      category: seed.category,
+      categories: [seed.category, ...(seed.also ?? [])],
       description: seed.description,
       isFree: seed.isFree ?? false,
       latitude: center.latitude + offset,

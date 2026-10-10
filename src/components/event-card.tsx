@@ -10,14 +10,15 @@ import type { BtvEvent } from '@/data/types';
 import { useStore } from '@/data/store';
 import { useTheme } from '@/hooks/use-theme';
 
-export function EventCard({ event }: { event: BtvEvent }) {
+/** `preview` shows the card as it will look, without opening or saving it. */
+export function EventCard({ event, preview }: { event: BtvEvent; preview?: boolean }) {
   const theme = useTheme();
   const { savedIds, toggleSaved } = useStore();
   const saved = savedIds.has(event.id);
 
   return (
     <Pressable
-      onPress={() => router.push(`/event/${event.id}`)}
+      onPress={preview ? undefined : () => router.push(`/event/${event.id}`)}
       style={({ pressed }) => [
         styles.card,
         { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.85 : 1 },
@@ -26,7 +27,9 @@ export function EventCard({ event }: { event: BtvEvent }) {
       <DateBadge date={event.date} />
       <View style={styles.body}>
         <View style={styles.tags}>
-          <CategoryTag category={event.category} />
+          {event.categories.map((c) => (
+            <CategoryTag key={c} category={c} />
+          ))}
           {event.isFree && (
             <AppText type="label" style={[styles.free, { color: theme.primary }]}>
               Free
@@ -41,6 +44,7 @@ export function EventCard({ event }: { event: BtvEvent }) {
         </AppText>
       </View>
       <Pressable
+        disabled={preview}
         onPress={() => toggleSaved(event.id)}
         hitSlop={10}
         accessibilityRole="button"
@@ -62,6 +66,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   body: { flex: 1, gap: 3 },
-  tags: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   free: { fontSize: 10 },
 });

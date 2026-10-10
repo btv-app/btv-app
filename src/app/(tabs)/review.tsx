@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { CategoryTag } from '@/components/category-tag';
@@ -32,13 +32,22 @@ export default function ReviewScreen() {
       {!!error && <AppText themeColor="danger">{error}</AppText>}
       {pending.map((e) => (
         <View key={e.id} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, borderLeftColor: theme.accent }]}>
-          <CategoryTag category={e.category} />
+          <View style={styles.tags}>
+            {e.categories.map((c) => (
+              <CategoryTag key={c} category={c} />
+            ))}
+          </View>
           <AppText type="cardTitle">{e.title}</AppText>
           <AppText type="small">
             {longDate(e.date)} · {e.time} · {e.town}
             {'\n'}Submitted by {e.submittedBy ?? 'a resident'}
           </AppText>
-          {!!e.description && <AppText>{e.description}</AppText>}
+          {!!e.description && <AppText numberOfLines={4}>{e.description}</AppText>}
+          <Pressable onPress={() => router.push(`/event/${e.id}`)} accessibilityRole="link">
+            <AppText type="strong" themeColor="primary">
+              See full details{e.flyerUrl ? ' and flyer' : ''}
+            </AppText>
+          </Pressable>
           <View style={styles.actions}>
             <View style={{ flex: 1 }}>
               <Button title="Approve" onPress={() => decide(e.id, 'approved')} />
@@ -57,4 +66,5 @@ export default function ReviewScreen() {
 const styles = StyleSheet.create({
   card: { gap: 6, padding: 12, borderRadius: Radius.medium, borderWidth: StyleSheet.hairlineWidth, borderLeftWidth: 4 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
 });

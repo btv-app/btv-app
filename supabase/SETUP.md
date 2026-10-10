@@ -9,6 +9,10 @@ The app talks to the Supabase project `uenshjtbgjztcgtgywlz`. These steps are do
 
 The script is safe to run again: it only adds what is missing and never deletes tables or data. If it stops with "Type ... is missing ...", run [`fix-enum-labels.sql`](fix-enum-labels.sql) on its own in a new query, then run `schema.sql` again.
 
+3. In a new query, paste all of [`storage.sql`](storage.sql) and click **Run**. It makes the `flyers` storage bucket for event flyer photos. It is also safe to run again.
+
+Run both again whenever the app gets new database features. Rerunning keeps your events, and categories you removed in the app stay removed.
+
 ## 2. Turn on sign-in codes
 
 The app signs people in with a 6-digit code sent by email, so nobody needs a password.
@@ -24,7 +28,7 @@ The app signs people in with a 6-digit code sent by email, so nobody needs a pas
 
 3. Save. Do the same for the **Confirm signup** template, since a first-time sign-in uses that one.
 
-Supabase's built-in email sender only sends a few emails an hour. Before launch, add your own sender under **Authentication → Emails → SMTP Settings** (for example Resend or Postmark).
+Supabase's built-in email sender only sends a few emails an hour and only to project team members. Add your own sender under **Authentication → Emails → SMTP Settings**. With Gmail: host `smtp.gmail.com`, port `587`, your full Gmail address as the username, and a Google app password (not your normal password) from myaccount.google.com/apppasswords.
 
 ## 3. Add the app key
 

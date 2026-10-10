@@ -14,7 +14,8 @@ import {
   type EventFilters,
   type When,
 } from '@/data/filters';
-import { CATEGORIES, TOWNS, type Category } from '@/data/types';
+import { useStore } from '@/data/store';
+import { TOWNS, type Category } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 
 /** Dates offered under "Pick a date": the next four weeks. */
@@ -35,6 +36,7 @@ export function FilterSheet({
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { categories } = useStore();
   const set = (patch: Partial<EventFilters>) => onChange({ ...filters, ...patch });
   const toggleCategory = (category: Category) =>
     set({
@@ -84,7 +86,7 @@ export function FilterSheet({
           )}
 
           <Section title="Category">
-            {CATEGORIES.map((category) => (
+            {categories.map((category) => (
               <ToggleChip
                 key={category}
                 label={category}

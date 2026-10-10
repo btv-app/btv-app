@@ -66,3 +66,23 @@ export function groupLabel(iso: string): string {
   if (diff <= daysToSunday + 7) return 'next week';
   return `later in ${MONTH_NAMES[parseDate(iso).getMonth()]}`;
 }
+
+/** "7 PM" on the hour, otherwise "6:30 PM". */
+export function formatTime(date: Date, withMeridiem = true): string {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const clock = `${hours % 12 || 12}${minutes ? `:${String(minutes).padStart(2, '0')}` : ''}`;
+  return withMeridiem ? `${clock} ${hours < 12 ? 'AM' : 'PM'}` : clock;
+}
+
+/** "7 – 10 PM", "10 AM – 4 PM", or just the start time when there's no end. */
+export function timeRange(start: Date, end: Date | null): string {
+  if (!end) return formatTime(start);
+  const sameHalf = start.getHours() < 12 === end.getHours() < 12;
+  return `${formatTime(start, !sameHalf)} – ${formatTime(end)}`;
+}
+
+/** 24-hour "HH:MM" for the database. */
+export function toClock(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}

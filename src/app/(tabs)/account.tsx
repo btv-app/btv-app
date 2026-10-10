@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
+import { CategoryManager } from '@/components/category-manager';
 import { Button } from '@/components/controls';
 import { Field } from '@/components/field';
 import { Screen } from '@/components/screen';
@@ -50,6 +51,12 @@ export default function AccountScreen() {
           <AppText type="small">Nothing submitted yet.</AppText>
         )}
       </View>
+      {role === 'owner' && (
+        <>
+          <AppText type="script">categories</AppText>
+          <CategoryManager />
+        </>
+      )}
       <Button title="Sign out" variant="secondary" onPress={signOut} />
     </Screen>
   );

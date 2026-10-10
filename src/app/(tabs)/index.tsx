@@ -24,7 +24,7 @@ const AD_EVERY = 3;
 
 export default function EventsScreen() {
   const theme = useTheme();
-  const { approved, loading, loadError, refresh } = useStore();
+  const { approved, categories, loading, loadError, refresh } = useStore();
   const [view, setView] = useState<ViewMode>('list');
   const [filters, setFilters] = useState<EventFilters>(DEFAULT_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -41,15 +41,21 @@ export default function EventsScreen() {
         : [...f.categories, category],
     }));
 
+  // Category shortcuts disappear if the owner removes that category.
+  const categoryShortcut = (label: string, category: Category) =>
+    categories.includes(category)
+      ? { label, selected: filters.categories.includes(category), onPress: () => toggleCategory(category) }
+      : null;
+
   // Shortcuts to the most-used filters; each mirrors a setting in the full filter sheet.
   const quickFilters = [
     { label: 'Today', selected: filters.when === 'today', onPress: () => set({ when: filters.when === 'today' ? 'any' : 'today', date: null }) },
     { label: 'This weekend', selected: filters.when === 'weekend', onPress: () => set({ when: filters.when === 'weekend' ? 'any' : 'weekend', date: null }) },
-    { label: 'Live music', selected: filters.categories.includes('Music'), onPress: () => toggleCategory('Music') },
+    categoryShortcut('Live music', 'Music'),
     { label: 'Free', selected: filters.freeOnly, onPress: () => set({ freeOnly: !filters.freeOnly }) },
-    { label: 'Support a cause', selected: filters.categories.includes('Support a Cause'), onPress: () => toggleCategory('Support a Cause') },
-    { label: 'Community resources', selected: filters.categories.includes('Community Resources'), onPress: () => toggleCategory('Community Resources') },
-  ];
+    categoryShortcut('Support a cause', 'Support a Cause'),
+    categoryShortcut('Community resources', 'Community Resources'),
+  ].filter((chip) => chip !== null);
 
   return (
     <Screen>
