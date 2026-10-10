@@ -86,3 +86,22 @@ export function timeRange(start: Date, end: Date | null): string {
 export function toClock(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
+
+/**
+ * Reads start and end times out of free text like "7–10 PM", "10 AM – 4 PM" or "8 AM – Noon",
+ * for events added before the time pickers. Returns 24-hour "HH:MM" values, or null if unclear.
+ */
+export function parseTimeText(text: string): { start: string; end: string | null } | null {
+  const found = [...text.replace(/noon/gi, '12 PM').matchAll(/(?<![$\d])(\d{1,2})(?::(\d{2}))?\s*([ap])?\.?m?\.?/gi)]
+    .map((m) => ({ hour: Number(m[1]), minute: Number(m[2] ?? 0), half: m[3]?.toLowerCase() }))
+    .filter((t) => t.hour >= 1 && t.hour <= 12 && t.minute < 60)
+    .slice(0, 2);
+  if (!found.length) return null;
+  const lastHalf = found[found.length - 1].half;
+  if (!lastHalf) return null;
+  const toClock = ({ hour, minute, half }: (typeof found)[number]) => {
+    const h = (hour % 12) + ((half ?? lastHalf) === 'p' ? 12 : 0);
+    return `${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  };
+  return { start: toClock(found[0]), end: found[1] ? toClock(found[1]) : null };
+}

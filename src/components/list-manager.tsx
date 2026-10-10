@@ -6,16 +6,28 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/controls';
 import { Field } from '@/components/field';
 import { Radius } from '@/constants/theme';
-import { useStore } from '@/data/store';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
- * Owner-only: add seasonal categories like "Halloween" and remove ones that are done.
- * Removing a category only takes it off the pickers; events that already use it keep it.
+ * Owner-only editor for a list people pick from, like categories ("Halloween" for the season)
+ * or towns. Removing an item only takes it off the pickers; events that already use it keep it.
  */
-export function CategoryManager() {
+export function ListManager({
+  items,
+  onAdd,
+  onRemove,
+  help,
+  newLabel,
+  placeholder,
+}: {
+  items: string[];
+  onAdd: (name: string) => Promise<string | null>;
+  onRemove: (name: string) => Promise<string | null>;
+  help: string;
+  newLabel: string;
+  placeholder: string;
+}) {
   const theme = useTheme();
-  const { categories, addCategory, removeCategory } = useStore();
   const [name, setName] = useState('');
   const [confirming, setConfirming] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -31,12 +43,9 @@ export function CategoryManager() {
 
   return (
     <View style={[styles.panel, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      <AppText type="small">
-        People pick up to 3 of these for each event. Removing one hides it from the pickers and filters;
-        events that already use it keep it.
-      </AppText>
+      <AppText type="small">{help}</AppText>
       <View style={styles.wrap}>
-        {categories.map((c) => (
+        {items.map((c) => (
           <View key={c} style={[styles.chip, { borderColor: confirming === c ? theme.danger : theme.border }]}>
             <AppText type="small" style={{ color: theme.text }}>{c}</AppText>
             <Pressable
@@ -55,7 +64,7 @@ export function CategoryManager() {
           <AppText style={{ flex: 1 }}>Remove {confirming}?</AppText>
           <Pressable
             disabled={busy}
-            onPress={() => run(() => removeCategory(confirming), () => setConfirming(null))}
+            onPress={() => run(() => onRemove(confirming), () => setConfirming(null))}
             hitSlop={8}>
             <AppText type="strong" themeColor="danger">Remove</AppText>
           </Pressable>
@@ -66,20 +75,20 @@ export function CategoryManager() {
       )}
 
       <Field
-        label="New category"
+        label={newLabel}
         value={name}
         onChangeText={setName}
-        placeholder="Halloween"
+        placeholder={placeholder}
         returnKeyType="done"
         maxLength={30}
-        onSubmitEditing={() => run(() => addCategory(name), () => setName(''))}
+        onSubmitEditing={() => run(() => onAdd(name), () => setName(''))}
       />
       {!!error && <AppText themeColor="danger">{error}</AppText>}
       <Button
-        title={busy ? 'Saving…' : 'Add category'}
+        title={busy ? 'Saving…' : 'Add'}
         variant="secondary"
         disabled={busy}
-        onPress={() => run(() => addCategory(name), () => setName(''))}
+        onPress={() => run(() => onAdd(name), () => setName(''))}
       />
     </View>
   );

@@ -47,6 +47,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="event/[id]" />
+          <Stack.Screen name="event/edit/[id]" />
         </Stack>
       </StoreProvider>
     </ThemeProvider>

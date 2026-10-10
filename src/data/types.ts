@@ -1,12 +1,20 @@
-export const TOWNS = [
-  'Ashland City',
-  'Kingston Springs',
-  'Pegram',
-  'Pleasant View',
-  'Chapmansboro',
-] as const;
+/** Town names. The owner can add and remove towns in the app, so screens read the list from the store. */
+export type Town = string;
 
-export type Town = (typeof TOWNS)[number];
+/** A town and roughly where its center is, for map pins on events without an exact address. */
+export type TownInfo = { name: Town; latitude: number; longitude: number };
+
+/** The towns a new project starts with. */
+export const DEFAULT_TOWNS: TownInfo[] = [
+  { name: 'Ashland City', latitude: 36.2742, longitude: -87.0642 },
+  { name: 'Kingston Springs', latitude: 36.0995, longitude: -87.1153 },
+  { name: 'Pegram', latitude: 36.1006, longitude: -87.0517 },
+  { name: 'Pleasant View', latitude: 36.3945, longitude: -87.0367 },
+  { name: 'Chapmansboro', latitude: 36.3742, longitude: -87.1253 },
+];
+
+/** Roughly the middle of Cheatham County. */
+export const COUNTY_CENTER = { latitude: 36.26, longitude: -87.09 };
 
 /**
  * The categories a new project starts with. The owner can add and remove categories in the app,
@@ -52,6 +60,13 @@ export type BtvEvent = {
   address?: string;
   /** Public URL of the flyer image. */
   flyerUrl?: string;
+  /** Where the flyer is stored, so an edit can keep it. */
+  flyerPath?: string;
+  /** 24-hour "HH:MM" when known (events added before the time pickers only have `time`). */
+  startTime?: string;
+  endTime?: string;
+  /** Still listed, marked as cancelled, so people who saved it find out. */
+  cancelled: boolean;
   latitude: number;
   longitude: number;
   status: EventStatus;
@@ -61,12 +76,3 @@ export type BtvEvent = {
 };
 
 export type Role = 'guest' | 'resident' | 'owner';
-
-/** Approximate town centers, used to place pins until venues are geocoded. */
-export const TOWN_COORDS: Record<Town, { latitude: number; longitude: number }> = {
-  'Ashland City': { latitude: 36.2742, longitude: -87.0642 },
-  'Kingston Springs': { latitude: 36.0995, longitude: -87.1153 },
-  Pegram: { latitude: 36.1006, longitude: -87.0517 },
-  'Pleasant View': { latitude: 36.3945, longitude: -87.0367 },
-  Chapmansboro: { latitude: 36.3742, longitude: -87.1253 },
-};

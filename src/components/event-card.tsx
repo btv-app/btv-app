@@ -30,13 +30,18 @@ export function EventCard({ event, preview }: { event: BtvEvent; preview?: boole
           {event.categories.map((c) => (
             <CategoryTag key={c} category={c} />
           ))}
-          {event.isFree && (
+          {event.cancelled && (
+            <AppText type="label" style={[styles.free, { color: theme.danger }]}>
+              Cancelled
+            </AppText>
+          )}
+          {event.isFree && !event.cancelled && (
             <AppText type="label" style={[styles.free, { color: theme.primary }]}>
               Free
             </AppText>
           )}
         </View>
-        <AppText type="cardTitle" numberOfLines={2}>
+        <AppText type="cardTitle" numberOfLines={2} style={event.cancelled && styles.struck}>
           {event.title}
         </AppText>
         <AppText type="small" numberOfLines={1}>
@@ -68,4 +73,5 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 3 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   free: { fontSize: 10 },
+  struck: { textDecorationLine: 'line-through', opacity: 0.6 },
 });

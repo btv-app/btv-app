@@ -117,6 +117,7 @@ alter table events add column if not exists end_time time;
 alter table events add column if not exists price_text text;         -- e.g. "$10, kids free"
 alter table events add column if not exists link_url text;           -- tickets, Facebook event or website
 alter table events add column if not exists categories text[];       -- one to three; the first is the main one
+alter table events add column if not exists cancelled boolean not null default false;  -- still listed, marked cancelled
 
 -- Events from before multiple categories keep their one category as the list.
 update events set categories = array[category] where categories is null or cardinality(categories) = 0;
@@ -140,6 +141,27 @@ begin
   end if;
 end $$;
 
+-- Towns the owner manages in the app, with a center point for events without a street address.
+-- Like categories, the starting list goes in only when the table is first created.
+do $$
+begin
+  if to_regclass('public.towns') is null then
+    create table public.towns (
+      name text primary key check (char_length(name) between 1 and 30),
+      latitude double precision not null,
+      longitude double precision not null,
+      sort_order int not null default 0,
+      created_at timestamptz not null default now()
+    );
+    insert into public.towns (name, latitude, longitude, sort_order) values
+      ('Ashland City', 36.2742, -87.0642, 0),
+      ('Kingston Springs', 36.0995, -87.1153, 1),
+      ('Pegram', 36.1006, -87.0517, 2),
+      ('Pleasant View', 36.3945, -87.0367, 3),
+      ('Chapmansboro', 36.3742, -87.1253, 4);
+  end if;
+end $$;
+
 -- Categories used to be a fixed list checked here. The owner manages them now, so that check
 -- goes, and each event instead needs one to three categories.
 alter table events drop constraint if exists events_category_check;
@@ -150,25 +172,32 @@ alter table events add constraint events_categories_count
 alter table events drop constraint if exists events_link_url_check;
 alter table events add constraint events_link_url_check check (link_url is null or link_url ~* '^https?://');
 
--- New or changed categories must be on the owner's list. Events keep a category the owner
--- removes later, since this only runs when an event's categories change. It also keeps the
--- older single "category" column set to the main category.
+-- New or changed categories and towns must be on the owner's lists. Events keep a category or
+-- town the owner removes later, since each check only runs when that field changes. It also keeps
+-- the older single "category" column set to the main category.
 create or replace function check_event_categories() returns trigger
 language plpgsql set search_path = public as $$
 declare
   unknown text;
 begin
-  select string_agg(c, ', ') into unknown
-  from unnest(new.categories) as c
-  where not exists (select 1 from categories where name = c);
-  if unknown is not null then
-    raise exception 'Not a current category: %', unknown;
+  if tg_op = 'INSERT' or new.categories is distinct from old.categories then
+    select string_agg(c, ', ') into unknown
+    from unnest(new.categories) as c
+    where not exists (select 1 from categories where name = c);
+    if unknown is not null then
+      raise exception 'Not a current category: %', unknown;
+    end if;
+  end if;
+  if (tg_op = 'INSERT' or new.town is distinct from old.town)
+     and not exists (select 1 from towns where name = new.town) then
+    raise exception 'Not a current town: %', new.town;
   end if;
   new.category := new.categories[1];
   return new;
 end;
 $$;
-create or replace trigger events_check_categories before insert or update of categories on events
+drop trigger if exists events_check_categories on events;
+create or replace trigger events_check_lists before insert or update of categories, town on events
   for each row execute function check_event_categories();
 
 create or replace function is_owner() returns boolean
@@ -198,6 +227,7 @@ alter table events enable row level security;
 alter table saved_events enable row level security;
 alter table sponsors enable row level security;
 alter table categories enable row level security;
+alter table towns enable row level security;
 
 -- Policies have no "if not exists", so each is dropped and recreated. Inside this
 -- transaction there is no moment when a table is left unprotected, and no data is touched.
@@ -232,6 +262,12 @@ drop policy if exists "read categories" on categories;
 create policy "read categories" on categories for select using (true);
 drop policy if exists "owner manages categories" on categories;
 create policy "owner manages categories" on categories for all using (is_owner()) with check (is_owner());
+
+-- Towns: everyone reads them; only the owner adds or removes them.
+drop policy if exists "read towns" on towns;
+create policy "read towns" on towns for select using (true);
+drop policy if exists "owner manages towns" on towns;
+create policy "owner manages towns" on towns for all using (is_owner()) with check (is_owner());
 
 drop policy if exists "read active sponsors" on sponsors;
 create policy "read active sponsors" on sponsors for select

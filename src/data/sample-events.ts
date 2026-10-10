@@ -1,5 +1,5 @@
 import { addDays, startOfToday, toIsoDate } from '@/data/dates';
-import { TOWN_COORDS, type BtvEvent, type Category, type EventStatus, type Town } from '@/data/types';
+import { DEFAULT_TOWNS, type BtvEvent, type Category, type EventStatus, type Town } from '@/data/types';
 
 /**
  * Made-up events so every screen has something to show before the backend exists.
@@ -40,7 +40,7 @@ const SEEDS: Seed[] = [
 export function sampleEvents(): BtvEvent[] {
   const today = startOfToday();
   return SEEDS.map((seed, i) => {
-    const center = TOWN_COORDS[seed.town];
+    const center = DEFAULT_TOWNS.find((t) => t.name === seed.town) ?? DEFAULT_TOWNS[0];
     // Spread pins a little so events in the same town don't stack exactly.
     const offset = ((i % 5) - 2) * 0.004;
     return {
@@ -56,6 +56,7 @@ export function sampleEvents(): BtvEvent[] {
       latitude: center.latitude + offset,
       longitude: center.longitude - offset,
       status: seed.status ?? 'approved',
+      cancelled: false,
       submittedBy: seed.submittedBy,
     };
   });

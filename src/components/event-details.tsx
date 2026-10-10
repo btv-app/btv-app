@@ -3,11 +3,13 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useState, type ComponentProps } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdSlot } from '@/components/ad-slot';
 import { AppText } from '@/components/app-text';
 import { CategoryTag } from '@/components/category-tag';
+import { Button } from '@/components/controls';
 import { Brand, Fonts, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { longDate } from '@/data/dates';
 import { useStore } from '@/data/store';
@@ -26,7 +28,7 @@ export function normalizeLink(link: string) {
  */
 export function EventDetails({ event, preview, topInset = 0 }: { event: BtvEvent; preview?: boolean; topInset?: number }) {
   const theme = useTheme();
-  const { savedIds, toggleSaved } = useStore();
+  const { role, savedIds, toggleSaved } = useStore();
   const saved = savedIds.has(event.id);
   const place = event.address ? `${event.address}, ${event.town}, TN` : `${event.town}, TN`;
 
@@ -51,6 +53,11 @@ export function EventDetails({ event, preview, topInset = 0 }: { event: BtvEvent
           {longDate(event.date)} · {event.time}
         </AppText>
       </View>
+      {event.cancelled && (
+        <View style={[styles.cancelled, { backgroundColor: theme.danger }]}>
+          <AppText style={styles.cancelledText}>This event has been cancelled</AppText>
+        </View>
+      )}
 
       <View style={styles.body}>
         {!preview && (
@@ -79,25 +86,109 @@ export function EventDetails({ event, preview, topInset = 0 }: { event: BtvEvent
         </View>
 
         {!!event.description && <AppText>{event.description}</AppText>}
-        {!preview && <AdSlot kind="banner" />}
         {!!event.flyerUrl && <Flyer uri={event.flyerUrl} />}
+        {!preview && role === 'owner' && <OwnerActions event={event} />}
+        {!preview && <AdSlot kind="banner" />}
       </View>
     </View>
   );
 }
 
-/** The flyer at its own shape, full width. */
+/** A small flyer thumbnail; tapping it opens the flyer full screen, where it can be zoomed. */
 function Flyer({ uri }: { uri: string }) {
   const theme = useTheme();
-  const [aspectRatio, setAspectRatio] = useState(3 / 4);
+  const insets = useSafeAreaInsets();
+  const [open, setOpen] = useState(false);
   return (
-    <Image
-      source={{ uri }}
-      contentFit="contain"
-      accessibilityLabel="Event flyer"
-      onLoad={({ source }) => source.width && source.height && setAspectRatio(source.width / source.height)}
-      style={[styles.flyer, { aspectRatio, borderColor: theme.border }]}
-    />
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="View the event flyer"
+        style={[styles.flyerRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Image source={{ uri }} contentFit="cover" style={styles.flyerThumb} />
+        <View style={{ flex: 1 }}>
+          <AppText type="strong">View flyer</AppText>
+          <AppText type="small">Tap to see it full size</AppText>
+        </View>
+        <Ionicons name="expand-outline" size={18} color={theme.primary} />
+      </Pressable>
+      <Modal visible={open} animationType="fade" onRequestClose={() => setOpen(false)} supportedOrientations={['portrait', 'landscape']}>
+        <View style={styles.viewer}>
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1 }}
+            maximumZoomScale={4}
+            minimumZoomScale={1}
+            centerContent
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}>
+            <Image source={{ uri }} contentFit="contain" style={{ flex: 1 }} accessibilityLabel="Event flyer" />
+          </ScrollView>
+          <Pressable
+            onPress={() => setOpen(false)}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Close flyer"
+            style={[styles.viewerClose, { top: insets.top + 10 }]}>
+            <Ionicons name="close" size={22} color="#FFFFFF" />
+          </Pressable>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
+/** Owner only: edit the event, cancel it (it stays listed, marked cancelled) or delete it. */
+function OwnerActions({ event }: { event: BtvEvent }) {
+  const theme = useTheme();
+  const { setCancelled, deleteEvent } = useStore();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const run = async (action: () => Promise<string | null>, onSuccess?: () => void) => {
+    setBusy(true);
+    const failure = await action();
+    setBusy(false);
+    setError(failure ?? '');
+    if (!failure) onSuccess?.();
+  };
+
+  return (
+    <View style={[styles.owner, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <AppText type="script">owner tools</AppText>
+      <Button title="Edit event" onPress={() => router.push(`/event/edit/${event.id}`)} disabled={busy} />
+      <Button
+        title={event.cancelled ? 'Mark as back on' : 'Cancel event'}
+        variant="secondary"
+        disabled={busy}
+        onPress={() => run(() => setCancelled(event.id, !event.cancelled))}
+      />
+      <AppText type="small">
+        {event.cancelled
+          ? 'It shows as cancelled in the list so people who saved it find out.'
+          : 'A cancelled event stays listed, marked as cancelled, so people who saved it find out.'}
+      </AppText>
+      {confirmDelete ? (
+        <View style={[styles.confirm, { borderColor: theme.danger }]}>
+          <AppText style={{ flex: 1 }}>Delete this event for good?</AppText>
+          <Pressable
+            disabled={busy}
+            hitSlop={8}
+            onPress={() => run(() => deleteEvent(event.id), () => (router.canGoBack() ? router.back() : router.replace('/')))}>
+            <AppText type="strong" themeColor="danger">Delete</AppText>
+          </Pressable>
+          <Pressable onPress={() => setConfirmDelete(false)} hitSlop={8}>
+            <AppText type="strong">Keep</AppText>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable onPress={() => setConfirmDelete(true)} hitSlop={8} accessibilityRole="button">
+          <AppText type="strong" themeColor="danger">Delete event</AppText>
+        </Pressable>
+      )}
+      {!!error && <AppText themeColor="danger">{error}</AppText>}
+    </View>
   );
 }
 
@@ -166,7 +257,8 @@ const styles = StyleSheet.create({
   },
   backText: { color: '#FFFFFF', fontFamily: Fonts.bodySemiBold, fontSize: 13 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  heroTitle: { color: '#FFFFFF', fontFamily: Fonts.display, fontSize: 30, lineHeight: 33, textTransform: 'uppercase' },
+  // Bodoni's tall capitals get clipped at the top if the line height is tight.
+  heroTitle: { color: '#FFFFFF', fontFamily: Fonts.display, fontSize: 30, lineHeight: 40, paddingTop: 4, textTransform: 'uppercase' },
   band: { backgroundColor: Brand.royal, paddingVertical: 11, paddingHorizontal: Spacing.three },
   bandText: { color: '#FFFFFF', textAlign: 'center', letterSpacing: 1, fontFamily: Fonts.bodyMedium, fontSize: 13.5 },
   body: { padding: Spacing.three, gap: Spacing.three, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
@@ -174,5 +266,12 @@ const styles = StyleSheet.create({
   action: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 9, borderRadius: Radius.medium, borderWidth: 1 },
   panel: { borderRadius: Radius.large, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 },
-  flyer: { width: '100%', borderRadius: Radius.large, borderWidth: StyleSheet.hairlineWidth },
+  cancelled: { paddingVertical: 9, paddingHorizontal: Spacing.three },
+  cancelledText: { color: '#FFFFFF', textAlign: 'center', fontFamily: Fonts.bodyBold, letterSpacing: 1, textTransform: 'uppercase', fontSize: 13 },
+  flyerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: Radius.large, borderWidth: StyleSheet.hairlineWidth },
+  flyerThumb: { width: 56, height: 72, borderRadius: 6 },
+  viewer: { flex: 1, backgroundColor: '#000000' },
+  viewerClose: { position: 'absolute', right: 16, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: 8 },
+  owner: { gap: 10, padding: 14, borderRadius: Radius.large, borderWidth: StyleSheet.hairlineWidth },
+  confirm: { flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderRadius: Radius.medium, padding: 10 },
 });
