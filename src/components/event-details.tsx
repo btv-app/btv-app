@@ -11,7 +11,8 @@ import { AppText } from '@/components/app-text';
 import { CategoryTag } from '@/components/category-tag';
 import { Button } from '@/components/controls';
 import { Brand, Fonts, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { longDate } from '@/data/dates';
+import { addDays, longDate, parseDate, startOfToday, toIsoDate } from '@/data/dates';
+import { describeRule, occurrenceDates, seriesKey } from '@/data/recurrence';
 import { useStore } from '@/data/store';
 import type { BtvEvent } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
@@ -28,8 +29,15 @@ export function normalizeLink(link: string) {
  */
 export function EventDetails({ event, preview, topInset = 0 }: { event: BtvEvent; preview?: boolean; topInset?: number }) {
   const theme = useTheme();
-  const { role, savedIds, toggleSaved } = useStore();
-  const saved = savedIds.has(event.id);
+  const { role, events, savedIds, toggleSaved } = useStore();
+  const key = seriesKey(event);
+  const saved = savedIds.has(key);
+  // For one date of a repeating event, the pattern is described from the event's first date.
+  const firstDate = (event.seriesId ? events.find((e) => e.id === event.seriesId)?.date : undefined) ?? event.date;
+  const today = toIsoDate(startOfToday());
+  const upcoming = event.recurrence
+    ? occurrenceDates(firstDate, event.recurrence, today > firstDate ? today : firstDate, toIsoDate(addDays(startOfToday(), 366))).slice(0, 6)
+    : [];
   const place = event.address ? `${event.address}, ${event.town}, TN` : `${event.town}, TN`;
 
   return (
@@ -62,7 +70,7 @@ export function EventDetails({ event, preview, topInset = 0 }: { event: BtvEvent
       <View style={styles.body}>
         {!preview && (
           <View style={styles.actions}>
-            <Action icon={saved ? 'heart' : 'heart-outline'} label={saved ? 'Saved' : 'Save'} onPress={() => toggleSaved(event.id)} active={saved} />
+            <Action icon={saved ? 'heart' : 'heart-outline'} label={saved ? 'Saved' : 'Save'} onPress={() => toggleSaved(key)} active={saved} />
             {/* Calendar, directions and share are wired up in a later pass (expo-calendar, maps links, Share API). */}
             <Action icon="calendar-outline" label="Calendar" />
             <Action icon="navigate-outline" label="Directions" />
@@ -72,6 +80,19 @@ export function EventDetails({ event, preview, topInset = 0 }: { event: BtvEvent
 
         <View style={[styles.panel, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <InfoRow icon="time-outline" title={event.time} detail={longDate(event.date)} />
+          {!!event.recurrence && (
+            <InfoRow
+              icon="repeat-outline"
+              title={describeRule(event.recurrence, firstDate)}
+              detail={
+                upcoming.length
+                  ? `Next: ${upcoming
+                      .map((d) => parseDate(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
+                      .join(', ')}`
+                  : 'No more dates'
+              }
+            />
+          )}
           <InfoRow icon="location-outline" title={event.venue} detail={place} />
           <InfoRow
             icon="pricetag-outline"
@@ -87,7 +108,7 @@ export function EventDetails({ event, preview, topInset = 0 }: { event: BtvEvent
 
         {!!event.description && <AppText>{event.description}</AppText>}
         {!!event.flyerUrl && <Flyer uri={event.flyerUrl} />}
-        {!preview && role === 'owner' && <OwnerActions event={event} />}
+        {!preview && role === 'owner' && <OwnerActions eventId={key} cancelled={event.cancelled} repeats={!!event.recurrence} />}
         {!preview && <AdSlot kind="banner" />}
       </View>
     </View>
@@ -138,8 +159,11 @@ function Flyer({ uri }: { uri: string }) {
   );
 }
 
-/** Owner only: edit the event, cancel it (it stays listed, marked cancelled) or delete it. */
-function OwnerActions({ event }: { event: BtvEvent }) {
+/**
+ * Owner only: edit the event, cancel it (it stays listed, marked cancelled) or delete it.
+ * For a repeating event these apply to every date.
+ */
+function OwnerActions({ eventId, cancelled, repeats }: { eventId: string; cancelled: boolean; repeats: boolean }) {
   const theme = useTheme();
   const { setCancelled, deleteEvent } = useStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -157,25 +181,26 @@ function OwnerActions({ event }: { event: BtvEvent }) {
   return (
     <View style={[styles.owner, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <AppText type="script">owner tools</AppText>
-      <Button title="Edit event" onPress={() => router.push(`/event/edit/${event.id}`)} disabled={busy} />
+      <Button title="Edit event" onPress={() => router.push(`/event/edit/${eventId}`)} disabled={busy} />
       <Button
-        title={event.cancelled ? 'Mark as back on' : 'Cancel event'}
+        title={cancelled ? 'Mark as back on' : 'Cancel event'}
         variant="secondary"
         disabled={busy}
-        onPress={() => run(() => setCancelled(event.id, !event.cancelled))}
+        onPress={() => run(() => setCancelled(eventId, !cancelled))}
       />
       <AppText type="small">
-        {event.cancelled
+        {cancelled
           ? 'It shows as cancelled in the list so people who saved it find out.'
           : 'A cancelled event stays listed, marked as cancelled, so people who saved it find out.'}
+        {repeats ? ' Editing, cancelling and deleting apply to every date.' : ''}
       </AppText>
       {confirmDelete ? (
         <View style={[styles.confirm, { borderColor: theme.danger }]}>
-          <AppText style={{ flex: 1 }}>Delete this event for good?</AppText>
+          <AppText style={{ flex: 1 }}>{repeats ? 'Delete every date of this event?' : 'Delete this event for good?'}</AppText>
           <Pressable
             disabled={busy}
             hitSlop={8}
-            onPress={() => run(() => deleteEvent(event.id), () => (router.canGoBack() ? router.back() : router.replace('/')))}>
+            onPress={() => run(() => deleteEvent(eventId), () => (router.canGoBack() ? router.back() : router.replace('/')))}>
             <AppText type="strong" themeColor="danger">Delete</AppText>
           </Pressable>
           <Pressable onPress={() => setConfirmDelete(false)} hitSlop={8}>

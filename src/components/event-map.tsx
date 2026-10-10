@@ -5,6 +5,7 @@ import MapView, { Marker } from 'react-native-maps';
 import { AppText } from '@/components/app-text';
 import { EventCard } from '@/components/event-card';
 import { Radius, Spacing } from '@/constants/theme';
+import { nextOfEach } from '@/data/recurrence';
 import type { BtvEvent } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -16,8 +17,10 @@ const COUNTY_REGION = {
   longitudeDelta: 0.32,
 };
 
-export function EventMap({ events }: { events: BtvEvent[] }) {
+export function EventMap({ events: listings }: { events: BtvEvent[] }) {
   const theme = useTheme();
+  // One pin per event: a repeating event is pinned at its next date.
+  const events = nextOfEach(listings);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = events.find((e) => e.id === selectedId);
 

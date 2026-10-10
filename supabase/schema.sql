@@ -118,6 +118,7 @@ alter table events add column if not exists price_text text;         -- e.g. "$1
 alter table events add column if not exists link_url text;           -- tickets, Facebook event or website
 alter table events add column if not exists categories text[];       -- one to three; the first is the main one
 alter table events add column if not exists cancelled boolean not null default false;  -- still listed, marked cancelled
+alter table events add column if not exists recurrence jsonb;        -- how it repeats, e.g. {"freq":"weekly","interval":1,"weekdays":[6]}
 
 -- Events from before multiple categories keep their one category as the list.
 update events set categories = array[category] where categories is null or cardinality(categories) = 0;
@@ -168,6 +169,12 @@ alter table events drop constraint if exists events_category_check;
 alter table events drop constraint if exists events_categories_count;
 alter table events add constraint events_categories_count
   check (categories is not null and cardinality(categories) between 1 and 3);
+alter table events drop constraint if exists events_recurrence_check;
+alter table events add constraint events_recurrence_check check (
+  recurrence is null
+  or (recurrence->>'freq' in ('daily', 'weekly', 'monthly', 'yearly')
+      and (recurrence->>'interval')::int between 1 and 99)
+);
 -- Links open in the browser, so only web addresses are allowed.
 alter table events drop constraint if exists events_link_url_check;
 alter table events add constraint events_link_url_check check (link_url is null or link_url ~* '^https?://');

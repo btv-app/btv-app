@@ -1,11 +1,13 @@
 import { AppText } from '@/components/app-text';
 import { EventCard } from '@/components/event-card';
 import { Screen } from '@/components/screen';
+import { nextOfEach, seriesKey } from '@/data/recurrence';
 import { useStore } from '@/data/store';
 
 export default function SavedScreen() {
   const { approved, savedIds, role } = useStore();
-  const saved = approved.filter((e) => savedIds.has(e.id));
+  // A saved repeating event shows once, at its next date.
+  const saved = nextOfEach(approved.filter((e) => savedIds.has(seriesKey(e))));
 
   return (
     <Screen>

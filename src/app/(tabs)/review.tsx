@@ -8,6 +8,7 @@ import { Button } from '@/components/controls';
 import { Screen } from '@/components/screen';
 import { Radius } from '@/constants/theme';
 import { longDate } from '@/data/dates';
+import { describeRule } from '@/data/recurrence';
 import { useStore } from '@/data/store';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -40,6 +41,7 @@ export default function ReviewScreen() {
           <AppText type="cardTitle">{e.title}</AppText>
           <AppText type="small">
             {longDate(e.date)} · {e.time} · {e.town}
+            {e.recurrence ? `\nRepeats: ${describeRule(e.recurrence, e.date)}` : ''}
             {'\n'}Submitted by {e.submittedBy ?? 'a resident'}
           </AppText>
           {!!e.description && <AppText numberOfLines={4}>{e.description}</AppText>}

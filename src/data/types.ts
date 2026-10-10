@@ -1,3 +1,5 @@
+import type { Recurrence } from '@/data/recurrence';
+
 /** Town names. The owner can add and remove towns in the app, so screens read the list from the store. */
 export type Town = string;
 
@@ -67,6 +69,13 @@ export type BtvEvent = {
   endTime?: string;
   /** Still listed, marked as cancelled, so people who saved it find out. */
   cancelled: boolean;
+  /** How the event repeats; each date then shows in the list and calendar. */
+  recurrence?: Recurrence;
+  /**
+   * Set on one date of a repeating event: the id of the event it belongs to. Saving, editing and
+   * cancelling use that id, so they apply to every date.
+   */
+  seriesId?: string;
   latitude: number;
   longitude: number;
   status: EventStatus;

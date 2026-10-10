@@ -3,10 +3,12 @@ import { View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { EventCard } from '@/components/event-card';
 import { Spacing } from '@/constants/theme';
+import { nextOfEach } from '@/data/recurrence';
 import type { BtvEvent } from '@/data/types';
 
 /** react-native-maps has no web support; on web the map view falls back to events grouped by town. */
-export function EventMap({ events }: { events: BtvEvent[] }) {
+export function EventMap({ events: listings }: { events: BtvEvent[] }) {
+  const events = nextOfEach(listings);
   // Towns in the order they first appear, which also covers towns the owner has since removed.
   const towns = [...new Set(events.map((e) => e.town))];
   return (

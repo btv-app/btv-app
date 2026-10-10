@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { expandSeries, type Recurrence } from '@/data/recurrence';
 import { sampleEvents } from '@/data/sample-events';
 import {
   COUNTY_CENTER,
@@ -28,7 +29,20 @@ export type Flyer = { uri: string; base64: string; width: number; height: number
 
 export type NewEvent = Pick<
   BtvEvent,
-  'title' | 'town' | 'venue' | 'address' | 'date' | 'time' | 'categories' | 'description' | 'isFree' | 'price' | 'link' | 'latitude' | 'longitude'
+  | 'title'
+  | 'town'
+  | 'venue'
+  | 'address'
+  | 'date'
+  | 'time'
+  | 'categories'
+  | 'description'
+  | 'isFree'
+  | 'price'
+  | 'link'
+  | 'latitude'
+  | 'longitude'
+  | 'recurrence'
 > & {
   /** 24-hour "HH:MM" */
   startTime: string;
@@ -49,7 +63,9 @@ type Store = {
   role: Role;
   displayName: string;
   email: string | null;
+  /** Events as stored: one entry per event, repeating or not. */
   events: BtvEvent[];
+  /** Approved listings by date: a repeating event appears once for each of its dates. */
   approved: BtvEvent[];
   pending: BtvEvent[];
   mySubmissions: BtvEvent[];
@@ -96,6 +112,7 @@ type EventRow = {
   start_time: string | null;
   end_time: string | null;
   cancelled: boolean | null;
+  recurrence: Recurrence | null;
   latitude: number | null;
   longitude: number | null;
   status: EventStatus;
@@ -127,6 +144,7 @@ function fromRow(row: EventRow): BtvEvent {
     startTime: clock(row.start_time),
     endTime: clock(row.end_time),
     cancelled: Boolean(row.cancelled),
+    recurrence: row.recurrence ?? undefined,
     latitude: row.latitude ?? COUNTY_CENTER.latitude,
     longitude: row.longitude ?? COUNTY_CENTER.longitude,
     status: row.status,
@@ -154,6 +172,7 @@ function detailColumns(input: NewEvent) {
     link_url: input.link || null,
     latitude: input.latitude,
     longitude: input.longitude,
+    recurrence: input.recurrence ?? null,
   };
 }
 
@@ -161,9 +180,9 @@ function detailColumns(input: NewEvent) {
 function demoEvent(input: NewEvent, currentFlyerUrl?: string) {
   // Copy only the detail fields: callers may pass a whole preview event, whose id and status
   // must not overwrite the real event's.
-  const { title, town, venue, address, date, time, categories, description, isFree, price, link, latitude, longitude } = input;
+  const { title, town, venue, address, date, time, categories, description, isFree, price, link, latitude, longitude, recurrence } = input;
   return {
-    ...{ title, town, venue, address, date, time, categories, description, isFree, price, link, latitude, longitude },
+    ...{ title, town, venue, address, date, time, categories, description, isFree, price, link, latitude, longitude, recurrence },
     startTime: input.startTime,
     endTime: input.endTime ?? undefined,
     flyerUrl: input.flyer === 'keep' ? currentFlyerUrl : input.flyer?.uri,
@@ -290,7 +309,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       displayName: profileName ?? fallbackName,
       email,
       events,
-      approved: events.filter((e) => e.status === 'approved').sort(byDate),
+      approved: expandSeries(events.filter((e) => e.status === 'approved')).sort(byDate),
       pending: events.filter((e) => e.status === 'pending').sort(byDate),
       mySubmissions: supabase
         ? events.filter((e) => userId && e.submittedById === userId)

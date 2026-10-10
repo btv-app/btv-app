@@ -6,6 +6,7 @@ import { AppText } from '@/components/app-text';
 import { CategoryTag } from '@/components/category-tag';
 import { DateBadge } from '@/components/date-badge';
 import { Radius, Spacing } from '@/constants/theme';
+import { seriesKey } from '@/data/recurrence';
 import type { BtvEvent } from '@/data/types';
 import { useStore } from '@/data/store';
 import { useTheme } from '@/hooks/use-theme';
@@ -14,7 +15,8 @@ import { useTheme } from '@/hooks/use-theme';
 export function EventCard({ event, preview }: { event: BtvEvent; preview?: boolean }) {
   const theme = useTheme();
   const { savedIds, toggleSaved } = useStore();
-  const saved = savedIds.has(event.id);
+  const key = seriesKey(event);
+  const saved = savedIds.has(key);
 
   return (
     <Pressable
@@ -45,12 +47,14 @@ export function EventCard({ event, preview }: { event: BtvEvent; preview?: boole
           {event.title}
         </AppText>
         <AppText type="small" numberOfLines={1}>
+          {event.recurrence && <Ionicons name="repeat" size={12} color={theme.textSecondary} />}
+          {event.recurrence ? ' ' : ''}
           {event.time} · {event.town}
         </AppText>
       </View>
       <Pressable
         disabled={preview}
-        onPress={() => toggleSaved(event.id)}
+        onPress={() => toggleSaved(key)}
         hitSlop={10}
         accessibilityRole="button"
         accessibilityLabel={saved ? 'Remove from saved' : 'Save event'}

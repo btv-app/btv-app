@@ -11,9 +11,11 @@ import { EventCard } from '@/components/event-card';
 import { EventDetails, normalizeLink } from '@/components/event-details';
 import { Field } from '@/components/field';
 import { PinMap } from '@/components/pin-map';
+import { adjustRuleForDate, RepeatPicker } from '@/components/repeat-picker';
 import { Screen } from '@/components/screen';
 import { Radius } from '@/constants/theme';
 import { parseDate, parseTimeText, startOfToday, timeRange, toClock, toIsoDate } from '@/data/dates';
+import type { Recurrence } from '@/data/recurrence';
 import { useStore, type NewEvent } from '@/data/store';
 import { MAX_EVENT_CATEGORIES, type BtvEvent, type Category, type Town } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
@@ -64,6 +66,7 @@ export function EventForm({ editing, onSaved }: { editing?: BtvEvent; onSaved: (
     const clock = editing?.endTime ?? oldTimes?.end;
     return clock ? fromClock(clock, 20) : null;
   });
+  const [recurrence, setRecurrence] = useState<Recurrence | null>(() => editing?.recurrence ?? null);
   const [town, setTown] = useState<Town>(() => editing?.town ?? townList[0]?.name ?? '');
   const [categories, setCategories] = useState<Category[]>(() => editing?.categories ?? []);
   const [isFree, setIsFree] = useState(() => editing?.isFree ?? false);
@@ -114,6 +117,13 @@ export function EventForm({ editing, onSaved }: { editing?: BtvEvent; onSaved: (
     longitude: pin?.longitude ?? townCenter(town).longitude,
     status: editing?.status ?? (isOwner ? 'approved' : 'pending'),
     cancelled: editing?.cancelled ?? false,
+    recurrence: recurrence ?? undefined,
+  };
+
+  // Moving the date keeps a repeat like "Weekly on Saturday" on the new day.
+  const changeDate = (next: Date) => {
+    setRecurrence((rule) => adjustRuleForDate(rule, toIsoDate(date), toIsoDate(next)));
+    setDate(next);
   };
 
   const preview = async () => {
@@ -152,6 +162,7 @@ export function EventForm({ editing, onSaved }: { editing?: BtvEvent; onSaved: (
       setCategories([]);
       setIsFree(false);
       setEnd(null);
+      setRecurrence(null);
       setFlyer(null);
       setPin(null);
       setStep('form');
@@ -202,7 +213,7 @@ export function EventForm({ editing, onSaved }: { editing?: BtvEvent; onSaved: (
 
       <Field label="Event name" value={form.title} onChangeText={set('title')} placeholder="Fall Concert in the Park" />
 
-      <DateTimeField label="Date" mode="date" value={date} onChange={setDate} minimumDate={editing ? undefined : startOfToday()} />
+      <DateTimeField label="Date" mode="date" value={date} onChange={changeDate} minimumDate={editing ? undefined : startOfToday()} />
       <View style={styles.row}>
         <DateTimeField label="Starts" mode="time" value={start} onChange={setStart} style={{ flex: 1 }} />
         {end ? (
@@ -224,6 +235,8 @@ export function EventForm({ editing, onSaved }: { editing?: BtvEvent; onSaved: (
           </View>
         )}
       </View>
+
+      <RepeatPicker date={toIsoDate(date)} value={recurrence} onChange={setRecurrence} />
 
       <AppText type="label" style={styles.label}>Town</AppText>
       <Chips options={towns} value={town} onChange={setTown} />

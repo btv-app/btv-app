@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
 import { EventDetails } from '@/components/event-details';
+import { onDate, parseListingId } from '@/data/recurrence';
 import { useStore } from '@/data/store';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -12,7 +13,10 @@ export default function EventDetailScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { events } = useStore();
-  const event = events.find((e) => e.id === id);
+  // A link to one date of a repeating event carries that date after the event id.
+  const { eventId, date } = parseListingId(id);
+  const found = events.find((e) => e.id === eventId);
+  const event = found && date ? onDate(found, date) : found;
 
   if (!event) {
     return (
